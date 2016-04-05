@@ -23,8 +23,7 @@ import fs from 'fs';
   * "Import": {
   *   "models": {
   *     "ImportContainer": "Model",
-  *     "ImportUpload": "Model",
-  *     "ImportUploadError": "Model"
+  *     "ImportLog": "Model"
   *   }
   * }
   **/
@@ -33,13 +32,11 @@ export default (Model, ctx) => {
   Model.import = (req, finish) => {
     // Set model names
     const ImportContainerName = (ctx.models && ctx.models.ImportContainer) || 'ImportContainer';
-    const ImportUploadName = (ctx.models && ctx.models.ImportUpload) || 'ImportUpload';
-    const ImportUploadErrorName = (ctx.models && ctx.models.ImportUploadError) || 'ImportUploadError';
+    const ImportLogName = (ctx.models && ctx.models.ImportLog) || 'ImportLog';
     const ImportContainer = Model.app.models[ImportContainerName];
-    const ImportUpload = Model.app.models[ImportUploadName];
-    const ImportUploadError = Model.app.models[ImportUploadErrorName];
+    const ImportLog = Model.app.models[ImportLogName];
     const containerName = Model.definition.name + '-' + Math.round(Date.now()) + '-' + Math.round(Math.random() * 1000);
-    if (!ImportContainer || !ImportUpload || !ImportUploadError) {
+    if (!ImportContainer || !ImportLog) {
       return finish(new Error('(loopback-import-mixin) Missing required models, verify your setup and configuration'));
     }
     return new Promise((resolve, reject) => {
@@ -58,7 +55,7 @@ export default (Model, ctx) => {
             return next(new Error('The file you selected is not csv format'));
           }
           // Store the state of the import process in the database
-          ImportUpload.create({
+          ImportLog.create({
             date: moment().toISOString(),
             model: Model.definition.name,
             status: 'PENDING',
@@ -78,8 +75,7 @@ export default (Model, ctx) => {
             container: fileContainer.files.file[0].container,
             file: fileContainer.files.file[0].name,
             ImportContainer: ImportContainerName,
-            ImportUpload: ImportUploadName,
-            ImportUploadError: ImportUploadErrorName,
+            ImportLog: ImportLogName,
           })]);
         if (typeof finish === 'function') finish(null, fileContainer);
         resolve(fileContainer);
@@ -90,50 +86,145 @@ export default (Model, ctx) => {
    * Create import method (Not Available through REST)
    **/
   Model.importProcessor = function ImportMethod(container, file, options, finish) {
-    const filePath = '/Volumes/backup/development/mobile/sjc/sjc-api/' + options.root + '/' + options.container + '/' + options.file;
-    const ImportContainer = Model.app.models[options.ImportContainer];
-    const ImportUpload = Model.app.models[options.ImportUpload];
+    const filePath = '../../' + options.root + '/' + options.container + '/' + options.file;
+    // const ImportContainer = Model.app.models[options.ImportContainer];
+    const ImportLog = Model.app.models[options.ImportLog];
     async.waterfall([
-      // Get importUpload
-      next => ImportUpload.findById(options.fileUploadId, next),
+      // Get ImportLog
+      next => ImportLog.findById(options.fileUploadId, next),
       // Set importUpload status as processing
-      (importUpload, next) => {
-        ctx.importUpload = importUpload;
-        ctx.importUpload.status = 'PROCESSING';
-        ctx.importUpload.save(next);
+      (importLog, next) => {
+        ctx.importLog = importLog;
+        ctx.importLog.status = 'PROCESSING';
+        ctx.importLog.save(next);
       },
       // Import Data
-      (importUpload, next) => {
+      (importLog, next) => {
         // This line opens the file as a readable stream
+        const series = [];
         fs.createReadStream(filePath)
           .pipe(csv())
-          .on('data', (row) => {
+          .on('data', row => {
             const obj = {};
             for (const key in ctx.map) {
               if (row[ctx.map[key]]) {
                 obj[key] = row[ctx.map[key]];
               }
             }
+            if (!obj[ctx.pk]) return;
             const query = {};
             query[ctx.pk] = obj[ctx.pk];
-            console.log(obj);
-            // Find or create instance
-            Model.findOrCreate({ where: query }, obj, (err, instance) => {
-              if (err) importUpload.errors.create({ row: row });
-              console.log(instance);
-              // TODO Work on relationships
+            // Lets set each row a flow
+            series.push(nextSerie => {
+              async.waterfall([
+                // See in DB for existing persisted instance
+                nextFall => Model.findOne({ where: query }, nextFall),
+                // If we get an instance we just set a warning into the log
+                (instance, nextFall) => {
+                  if (instance) {
+                    ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                    ctx.importLog.warnings.push({
+                      row: row,
+                      message: Model.definition.name + '.' + ctx.pk + ' ' + obj[ctx.pk] + ' already exists, updating fields to new values.',
+                    });
+                    for (const _key in obj) {
+                      if (obj.hasOwnProperty(_key)) instance[_key] = obj[_key];
+                    }
+                    instance.save(nextFall);
+                  } else {
+                    nextFall(null, null);
+                  }
+                },
+                // Otherwise we create a new instance
+                (instance, nextFall) => {
+                  if (instance) return nextFall(null, instance);
+                  Model.create(obj, nextFall);
+                },
+                // Work on relations
+                (instance, nextFall) => {
+                  // Finall parallel process container
+                  const parallel = [];
+                  let setupRelation;
+                  let ensureRelation;
+                  // Iterates through existing relations in model
+                  setupRelation = function sr(expectedRelation) {
+                    for (const existingRelation in Model.definition.settings.relations) {
+                      if (Model.definition.settings.relations.hasOwnProperty(existingRelation)) {
+                        ensureRelation(expectedRelation, existingRelation);
+                      }
+                    }
+                  };
+                  // Makes sure the relation exist
+                  ensureRelation = function er(expectedRelation, existingRelation) {
+                    if (expectedRelation === existingRelation) {
+                      parallel.push(nextParallel => {
+                        const relQry = { where: {} };
+                        for (const property in ctx.relations[expectedRelation]) {
+                          if (ctx.relations[expectedRelation].hasOwnProperty(property)) {
+                            relQry.where[property] = row[ctx.relations[expectedRelation][property]];
+                          }
+                        }
+                        Model.app.models[Model.definition.settings.relations[existingRelation].model].findOne(relQry, (relErr, relInstance) => {
+                          if (relErr) return nextParallel(relErr);
+                          if (!relInstance) {
+                            ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                            ctx.importLog.warnings.push({
+                              row: row,
+                              message: Model.definition.name + '.' + expectedRelation + ' tried to relate unexisting instance of ' + expectedRelation,
+                            });
+                            return nextParallel();
+                          }
+                          instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
+                            if (exist) {
+                              ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                              ctx.importLog.warnings.push({
+                                row: row,
+                                message: Model.definition.name + '.' + expectedRelation + ' tried to relate existing relation.',
+                              });
+                              return nextParallel();
+                            }
+                            // TODO, Verify for different type of relations, this works on hasManyThrough and HasManyAndBelongsTo
+                            // but what about just hast many?? seems weird but Ill left this here if any issues are rised
+                            instance[expectedRelation].add(relInstance, nextParallel);
+                          });
+                        });
+                      });
+                    }
+                  };
+                  // Work on defined relationships
+                  for (const ers in ctx.relations) {
+                    if (ctx.relations.hasOwnProperty(ers)) {
+                      setupRelation(ers);
+                    }
+                  }
+                  // Run the relations process in parallel
+                  async.parallel(parallel, nextFall);
+                },
+                // If there are any error in this serie we log it into the errors array of objects
+              ], err => {
+                if (err) {
+                  ctx.importLog.errors = Array.isArray(ctx.importLog.errors) ? ctx.importLog.errors : [];
+                  ctx.importLog.errors.push({ row: row, message: err });
+                }
+                nextSerie();
+              });
             });
           })
-          .on('end', () => next());
+          .on('end', () => {
+            async.series(series, next);
+          });
       },
       // Remove Container
-      next => ImportContainer.remove({ container: options.container }, next),
+      // next => ImportContainer.destroyContainer({ container: options.container }, next),
       // Set status as finished
       next => {
-        ctx.importUpload.status = 'FINISHED';
-        ctx.importUpload.save(next);
+        ctx.importLog.status = 'FINISHED';
+        ctx.importLog.save(next);
       },
-    ], finish);
+    ], err => {
+      if (err) throw new Error(err);
+      finish(err);
+    });
   };
   /**
    * Register Import Method

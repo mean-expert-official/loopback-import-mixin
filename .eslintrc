@@ -4,5 +4,8 @@
     "restParams": true,
     "experimentalObjectRestSpread": true
   },
+  "rules": {
+    "no-loop-func": 1
+  },
   "indent": ["error", 4]
 }
