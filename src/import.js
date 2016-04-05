@@ -4,6 +4,8 @@
 import async from 'async';
 import moment from 'moment';
 import childProcess from 'child_process';
+import csv from 'csv-parser';
+import fs from 'fs';
 // import DataSourceBuilder from './builders/datasource-builder';
 /**
   * Bulk Import Mixin
@@ -30,9 +32,12 @@ export default (Model, ctx) => {
   // Create import method
   Model.import = (req, finish) => {
     // Set model names
-    const ImportContainer = Model.app.models[(ctx.models && ctx.models.ImportContainer) || 'ImportContainer'];
-    const ImportUpload = Model.app.models[(ctx.models && ctx.models.ImportUpload) || 'ImportUpload'];
-    const ImportUploadError = Model.app.models[(ctx.models && ctx.models.ImportUploadError) || 'ImportUploadError'];
+    const ImportContainerName = (ctx.models && ctx.models.ImportContainer) || 'ImportContainer';
+    const ImportUploadName = (ctx.models && ctx.models.ImportUpload) || 'ImportUpload';
+    const ImportUploadErrorName = (ctx.models && ctx.models.ImportUploadError) || 'ImportUploadError';
+    const ImportContainer = Model.app.models[ImportContainerName];
+    const ImportUpload = Model.app.models[ImportUploadName];
+    const ImportUploadError = Model.app.models[ImportUploadErrorName];
     const containerName = Model.definition.name + '-' + Math.round(Date.now()) + '-' + Math.round(Math.random() * 1000);
     if (!ImportContainer || !ImportUpload || !ImportUploadError) {
       return finish(new Error('(loopback-import-mixin) Missing required models, verify your setup and configuration'));
@@ -65,13 +70,16 @@ export default (Model, ctx) => {
           return reject(err);
         }
         // Launch a fork node process that will handle the import
-        childProcess.fork('/Volumes/backup/development/www/my-modules/loopback-import-mixin/dist/processes/import-process.js', [
+        childProcess.fork(__dirname + '/processes/import-process.js', [
           JSON.stringify({
             scope: Model.definition.name,
-            fileUpload: fileUpload.id,
+            fileUploadId: fileUpload.id,
             root: Model.app.datasources.container.settings.root,
             container: fileContainer.files.file[0].container,
             file: fileContainer.files.file[0].name,
+            ImportContainer: ImportContainerName,
+            ImportUpload: ImportUploadName,
+            ImportUploadError: ImportUploadErrorName,
           })]);
         if (typeof finish === 'function') finish(null, fileContainer);
         resolve(fileContainer);
@@ -81,8 +89,51 @@ export default (Model, ctx) => {
   /**
    * Create import method (Not Available through REST)
    **/
-  Model.importProcessor = function ImportMethod(container, file, options, next) {
-    next();
+  Model.importProcessor = function ImportMethod(container, file, options, finish) {
+    const filePath = '/Volumes/backup/development/mobile/sjc/sjc-api/' + options.root + '/' + options.container + '/' + options.file;
+    const ImportContainer = Model.app.models[options.ImportContainer];
+    const ImportUpload = Model.app.models[options.ImportUpload];
+    async.waterfall([
+      // Get importUpload
+      next => ImportUpload.findById(options.fileUploadId, next),
+      // Set importUpload status as processing
+      (importUpload, next) => {
+        ctx.importUpload = importUpload;
+        ctx.importUpload.status = 'PROCESSING';
+        ctx.importUpload.save(next);
+      },
+      // Import Data
+      (importUpload, next) => {
+        // This line opens the file as a readable stream
+        fs.createReadStream(filePath)
+          .pipe(csv())
+          .on('data', (row) => {
+            const obj = {};
+            for (const key in ctx.map) {
+              if (row[ctx.map[key]]) {
+                obj[key] = row[ctx.map[key]];
+              }
+            }
+            const query = {};
+            query[ctx.pk] = obj[ctx.pk];
+            console.log(obj);
+            // Find or create instance
+            Model.findOrCreate({ where: query }, obj, (err, instance) => {
+              if (err) importUpload.errors.create({ row: row });
+              console.log(instance);
+              // TODO Work on relationships
+            });
+          })
+          .on('end', () => next());
+      },
+      // Remove Container
+      next => ImportContainer.remove({ container: options.container }, next),
+      // Set status as finished
+      next => {
+        ctx.importUpload.status = 'FINISHED';
+        ctx.importUpload.save(next);
+      },
+    ], finish);
   };
   /**
    * Register Import Method
