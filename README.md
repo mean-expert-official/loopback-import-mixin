@@ -1,7 +1,5 @@
 [![NPM](https://nodei.co/npm/loopback-import-mixin.png?stars&downloads)](https://nodei.co/npm/loopback-import-mixin/) [![NPM](https://nodei.co/npm-dl/loopback-import-mixin.png)](https://nodei.co/npm/loopback-import-mixin/)
 
-[![build status](http://img.shields.io/travis/mafintosh/loopback-import-mixin.svg?style=flat)](http://travis-ci.org/mafintosh/loopback-import-mixin)
-
 Loopback Import Mixin
 =============
 This module is designed for the [Strongloop Loopback](https://github.com/strongloop/loopback) framework.  It provides bulk import functionallity to Models and Relations by uploading CSV files.
