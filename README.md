@@ -19,7 +19,7 @@ With [loopback-boot@v2.8.0](https://github.com/strongloop/loopback-boot/)  [mixi
 
 Add the `mixins` property to your `server/model-config.json` like the following:
 
-```json
+```js
 {
   "_meta": {
     "sources": [
@@ -110,7 +110,7 @@ In this example, the relation names `MUST` correspond to an actual relationship 
 
 The where statement is transparently passed to loopback, meaning you can use or & and operators as any regular loopback where query:
 
-```json
+```js
 "mixins": {
     "Import": {
         "pk": "csvFileColumnPK",
@@ -129,22 +129,6 @@ The where statement is transparently passed to loopback, meaning you can use or 
     }
 }
 ```
-
-BOOT OPTIONS
-=============
-
-The following options are needed in order to create a micro-service to provide statistical information regarding a model, relation or nested dataset.
-
-`HINT: you can create as many micro-services as you need.`
-
-| Options       | Type       | Requried          | Possible Values | Examples
-|:-------------:|:-------------:|:-------------:|:---------------:| :------------------------:
-| pk           | String      | Yes  | Any             |  CSV PK Name
-| map          | Object      | Yes  | Schema Map        |  { Model.property: CSV.field}
-| relations    | Object     | No   | Relation Where Constraint | { RelatedModel.property: CSV.field  }
-
-
-
 
 LICENSE
 =============
