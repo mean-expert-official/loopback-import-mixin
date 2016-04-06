@@ -5,6 +5,8 @@ Loopback import Mixin - CHANGELOG
 
 The **loopback-import-mixin** module change .
 
+- **Version 1.0.4**.- 
+    - Added decent documentation in README
 - **Version 1.0.3**.- 
     - Fixed tmp folder path
 - **Version 1.0.2**.- Replaced by 1.0.3
