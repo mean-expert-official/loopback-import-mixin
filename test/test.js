@@ -58,9 +58,11 @@ const Invitation = DBDataSource.createModel('Invitation',
   },
   {
     mixins: {
-      Import: {
+      Import: [
+        {
         models: {}
       }
+      ]
     }
   }
 );

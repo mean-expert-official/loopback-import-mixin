@@ -83,8 +83,9 @@ You can configure the `loopback-import-mixin` by mapping the CSV file column nam
 
 ```js
 "mixins": {
-    "Import": {
+    "Import": [{
         "pk": "csvFileColumnPK",
+        "method": "importSomething",
         "map": {
             "modelProperty1": "csvFileColumnName1",
             "modelProperty2": "csvFileColumnName2",
@@ -94,13 +95,20 @@ You can configure the `loopback-import-mixin` by mapping the CSV file column nam
         },
         "relations": {
             "modelRelation1": {
-                "relatedModelProperty": "csvFileColumnNameX"
+                "type": "link",
+                "where": {
+                    "relatedModelProperty": "csvFileColumnNameX"
+                }
             },
             "modelRelation2": {
-                "relatedModelProperty": "csvFileColumnNameY"
+                "type": "create",
+                "map": {
+                    "relatedModelPropertyFoo": "csvFileColumnNameFoo",
+                    "relatedModelPropertyBar": "csvFileColumnNameBar"
+                }
             }
         }
-    }
+    }]
 }
 ```
 
@@ -120,10 +128,13 @@ The where statement is transparently passed to loopback, meaning you can use or 
         },
         "relations": {
             "modelRelation1": {
-                "or": [
-                    { "name": "csvFileColumnNameX" },
-                    { "email": "csvFileColumnNameY" }
-                ]
+                "type": "link",
+                "where:" {
+                    "or": [
+                        { "name": "csvFileColumnNameX" },
+                        { "email": "csvFileColumnNameY" }
+                    ]
+                }
             }
         }
     }

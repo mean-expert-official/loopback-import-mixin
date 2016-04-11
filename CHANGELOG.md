@@ -5,6 +5,10 @@ Loopback import Mixin - CHANGELOG
 
 The **loopback-import-mixin** module change .
 
+- **Version 1.0.6**.- 
+    - Implemented multiple import methods with different map configurations
+    - Implemented ability to create related instances
+    - Modified relations configuration, now link and create are available
 - **Version 1.0.5**.- 
     - Updated documentation
 - **Version 1.0.4**.- 

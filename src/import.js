@@ -27,9 +27,13 @@ import fs from 'fs';
   *   }
   * }
   **/
+
 export default (Model, ctx) => {
-  // Create import method
-  Model.import = (req, finish) => {
+  ctx.Model = Model;
+  ctx.method = ctx.method || 'import';
+  ctx.endpoint = ctx.endpoint || ['/', ctx.method].join('');
+  // Create dynamic statistic method
+  Model[ctx.method] = function StatMethod(req, finish) {
     // Set model names
     const ImportContainerName = (ctx.models && ctx.models.ImportContainer) || 'ImportContainer';
     const ImportLogName = (ctx.models && ctx.models.ImportLog) || 'ImportLog';
@@ -111,14 +115,16 @@ export default (Model, ctx) => {
                 obj[key] = row[ctx.map[key]];
               }
             }
-            if (!obj[ctx.pk]) return;
             const query = {};
-            query[ctx.pk] = obj[ctx.pk];
+            if (ctx.pk && obj[ctx.pk]) query[ctx.pk] = obj[ctx.pk];
             // Lets set each row a flow
             series.push(nextSerie => {
               async.waterfall([
                 // See in DB for existing persisted instance
-                nextFall => Model.findOne({ where: query }, nextFall),
+                nextFall => {
+                  if (!ctx.pk) return next(null, null);
+                  Model.findOne({ where: query }, nextFall);
+                },
                 // If we get an instance we just set a warning into the log
                 (instance, nextFall) => {
                   if (instance) {
@@ -146,6 +152,8 @@ export default (Model, ctx) => {
                   const parallel = [];
                   let setupRelation;
                   let ensureRelation;
+                  let linkRelation;
+                  let createRelation;
                   // Iterates through existing relations in model
                   setupRelation = function sr(expectedRelation) {
                     for (const existingRelation in Model.definition.settings.relations) {
@@ -158,38 +166,75 @@ export default (Model, ctx) => {
                   ensureRelation = function er(expectedRelation, existingRelation) {
                     if (expectedRelation === existingRelation) {
                       parallel.push(nextParallel => {
-                        const relQry = { where: {} };
-                        for (const property in ctx.relations[expectedRelation]) {
-                          if (ctx.relations[expectedRelation].hasOwnProperty(property)) {
-                            relQry.where[property] = row[ctx.relations[expectedRelation][property]];
-                          }
+                        switch (ctx.relations[expectedRelation].type) {
+                        case 'link':
+                          linkRelation(
+                            expectedRelation,
+                            existingRelation,
+                            nextParallel
+                          );
+                          break;
+                        case 'create':
+                          createRelation(
+                            expectedRelation,
+                            existingRelation,
+                            nextParallel
+                          );
+                          break;
+                        default:
+                          throw new Error('Type of relation needs to be defined');
                         }
-                        Model.app.models[Model.definition.settings.relations[existingRelation].model].findOne(relQry, (relErr, relInstance) => {
-                          if (relErr) return nextParallel(relErr);
-                          if (!relInstance) {
-                            ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
-                            ctx.importLog.warnings.push({
-                              row: row,
-                              message: Model.definition.name + '.' + expectedRelation + ' tried to relate unexisting instance of ' + expectedRelation,
-                            });
-                            return nextParallel();
-                          }
-                          instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
-                            if (exist) {
-                              ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
-                              ctx.importLog.warnings.push({
-                                row: row,
-                                message: Model.definition.name + '.' + expectedRelation + ' tried to relate existing relation.',
-                              });
-                              return nextParallel();
-                            }
-                            // TODO, Verify for different type of relations, this works on hasManyThrough and HasManyAndBelongsTo
-                            // but what about just hast many?? seems weird but Ill left this here if any issues are rised
-                            instance[expectedRelation].add(relInstance, nextParallel);
-                          });
-                        });
                       });
                     }
+                  };
+                  // Create Relation
+                  createRelation = function cr(expectedRelation, existingRelation, nextParallel) {
+                    const createObj = {};
+                    for (const key in ctx.relations[expectedRelation].map) {
+                      if (typeof ctx.relations[expectedRelation].map[key] === 'string' && row[ctx.relations[expectedRelation].map[key]]) {
+                        createObj[key] = row[ctx.relations[expectedRelation].map[key]];
+                      } else if (typeof ctx.relations[expectedRelation].map[key] === 'object') {
+                        switch (ctx.relations[expectedRelation].map[key].type) {
+                        case 'date':
+                          createObj[key] = moment(row[ctx.relations[expectedRelation].map[key].map], 'MM-DD-YYYY').toISOString();
+                          break;
+                        default:
+                          createObj[key] = row[ctx.relations[expectedRelation].map[key]];
+                        }
+                      }
+                    }
+                    instance[expectedRelation].create(createObj, nextParallel);
+                  };
+                  // Link Relations
+                  linkRelation = function lr(expectedRelation, existingRelation, nextParallel) {
+                    const relQry = { where: {} };
+                    for (const property in ctx.relations[expectedRelation].where) {
+                      if (ctx.relations[expectedRelation].where.hasOwnProperty(property)) {
+                        relQry.where[property] = row[ctx.relations[expectedRelation].where[property]];
+                      }
+                    }
+                    Model.app.models[Model.definition.settings.relations[existingRelation].model].findOne(relQry, (relErr, relInstance) => {
+                      if (relErr) return nextParallel(relErr);
+                      if (!relInstance) {
+                        ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                        ctx.importLog.warnings.push({
+                          row: row,
+                          message: Model.definition.name + '.' + expectedRelation + ' tried to relate unexisting instance of ' + expectedRelation,
+                        });
+                        return nextParallel();
+                      }
+                      instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
+                        if (exist) {
+                          ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                          ctx.importLog.warnings.push({
+                            row: row,
+                            message: Model.definition.name + '.' + expectedRelation + ' tried to relate existing relation.',
+                          });
+                          return nextParallel();
+                        }
+                        instance[expectedRelation].add(relInstance, nextParallel);
+                      });
+                    });
                   };
                   // Work on defined relationships
                   for (const ers in ctx.relations) {
@@ -203,8 +248,10 @@ export default (Model, ctx) => {
                 // If there are any error in this serie we log it into the errors array of objects
               ], err => {
                 if (err) {
-                  ctx.importLog.errors = Array.isArray(ctx.importLog.errors) ? ctx.importLog.errors : [];
-                  ctx.importLog.errors.push({ row: row, message: err });
+                  console.log('ERROR: ', err);
+                  // TODO Verify why can not set errors into the log
+                  // ctx.importLog.errors = Array.isArray(ctx.importLog.errors) ? ctx.importLog.errors : [];
+                  // ctx.importLog.errors.push({ row: row, message: err });
                 }
                 nextSerie();
               });
@@ -229,14 +276,14 @@ export default (Model, ctx) => {
   /**
    * Register Import Method
    */
-  Model.remoteMethod('import', {
-    http: { path: '/import', verb: 'post' },
+  Model.remoteMethod(ctx.method, {
+    http: { path: ctx.endpoint, verb: 'post' },
     accepts: [{
       arg: 'req',
       type: 'object',
       http: { source: 'req' },
     }],
     returns: { type: 'object', root: true },
-    description: 'Bulk upload and import cvs file to persist new instances',
+    description: ctx.description,
   });
 };
