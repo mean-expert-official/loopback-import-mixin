@@ -122,7 +122,7 @@ export default (Model, ctx) => {
               async.waterfall([
                 // See in DB for existing persisted instance
                 nextFall => {
-                  if (!ctx.pk) return next(null, null);
+                  if (!ctx.pk) return nextFall(null, null);
                   Model.findOne({ where: query }, nextFall);
                 },
                 // If we get an instance we just set a warning into the log

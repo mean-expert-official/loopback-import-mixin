@@ -5,6 +5,8 @@ Loopback import Mixin - CHANGELOG
 
 The **loopback-import-mixin** module change .
 
+- **Version 1.0.8**.- 
+    - Fixed bug on new root instances
 - **Version 1.0.7**.- 
     - Implemented belongsTo type of relationship
 - **Version 1.0.6**.- 
