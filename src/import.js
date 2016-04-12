@@ -223,17 +223,34 @@ export default (Model, ctx) => {
                         });
                         return nextParallel();
                       }
-                      instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
-                        if (exist) {
-                          ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
-                          ctx.importLog.warnings.push({
-                            row: row,
-                            message: Model.definition.name + '.' + expectedRelation + ' tried to relate existing relation.',
-                          });
-                          return nextParallel();
-                        }
-                        instance[expectedRelation].add(relInstance, nextParallel);
-                      });
+                      switch (Model.definition.settings.relations[existingRelation].type) {
+                      case 'hasMany':
+                      case 'hasManyThrough':
+                      case 'hasAndBelongsToMany':
+                        instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
+                          if (exist) {
+                            ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                            ctx.importLog.warnings.push({
+                              row: row,
+                              message: Model.definition.name + '.' + expectedRelation + ' tried to relate existing relation.',
+                            });
+                            return nextParallel();
+                          }
+                          instance[expectedRelation].add(relInstance, nextParallel);
+                        });
+                        break;
+                      case 'belongsTo':
+                        // instance[expectedRelation](relInstance, nextParallel);
+                        // For some reason does not work, no errors but no relationship is created
+                        // Ugly fix needed to be implemented
+                        let autoId = Model.definition.settings.relations[existingRelation].model;
+                        autoId = autoId.charAt(0).toLowerCase() + autoId.slice(1);
+                        instance[Model.definition.settings.relations[existingRelation].foreignKey || autoId] = relInstance.id;
+                        instance.save(nextParallel);
+                        break;
+                      default:
+                        nextParallel();
+                      }
                     });
                   };
                   // Work on defined relationships
@@ -248,10 +265,9 @@ export default (Model, ctx) => {
                 // If there are any error in this serie we log it into the errors array of objects
               ], err => {
                 if (err) {
-                  console.log('ERROR: ', err);
                   // TODO Verify why can not set errors into the log
-                  // ctx.importLog.errors = Array.isArray(ctx.importLog.errors) ? ctx.importLog.errors : [];
-                  // ctx.importLog.errors.push({ row: row, message: err });
+                  ctx.importLog.errors = Array.isArray(ctx.importLog.errors) ? ctx.importLog.errors : [];
+                  ctx.importLog.errors.push({ row: row, message: err });
                 }
                 nextSerie();
               });
