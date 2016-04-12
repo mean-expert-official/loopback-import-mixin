@@ -244,7 +244,7 @@ export default (Model, ctx) => {
                         // For some reason does not work, no errors but no relationship is created
                         // Ugly fix needed to be implemented
                         let autoId = Model.definition.settings.relations[existingRelation].model;
-                        autoId = autoId.charAt(0).toLowerCase() + autoId.slice(1);
+                        autoId = autoId.charAt(0).toLowerCase() + autoId.slice(1) + 'Id';
                         instance[Model.definition.settings.relations[existingRelation].foreignKey || autoId] = relInstance.id;
                         instance.save(nextParallel);
                         break;
