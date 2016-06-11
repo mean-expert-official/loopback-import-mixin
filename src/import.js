@@ -80,6 +80,7 @@ export default (Model, ctx) => {
             file: fileContainer.files.file[0].name,
             ImportContainer: ImportContainerName,
             ImportLog: ImportLogName,
+            relations: ctx.relations
           })]);
         if (typeof finish === 'function') finish(null, fileContainer);
         resolve(fileContainer);
@@ -254,8 +255,8 @@ export default (Model, ctx) => {
                     });
                   };
                   // Work on defined relationships
-                  for (const ers in ctx.relations) {
-                    if (ctx.relations.hasOwnProperty(ers)) {
+                  for (const ers in options.relations) {
+                    if (options.relations.hasOwnProperty(ers)) {
                       setupRelation(ers);
                     }
                   }
