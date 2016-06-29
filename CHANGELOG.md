@@ -5,6 +5,9 @@ Loopback import Mixin - CHANGELOG
 
 The **loopback-import-mixin** module change .
 
+
+- **Version 1.0.12**.- 
+    - Change throw for console.error
 - **Version 1.0.11**.- 
     - Fixed bug w/ error property
 - **Version 1.0.10**.- 
