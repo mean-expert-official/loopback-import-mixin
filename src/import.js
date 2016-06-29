@@ -267,8 +267,11 @@ export default (Model, ctx) => {
               ], err => {
                 if (err) {
                   // TODO Verify why can not set errors into the log
-                  ctx.importLog.errors = Array.isArray(ctx.importLog.errors) ? ctx.importLog.errors : [];
-                  ctx.importLog.errors.push({ row: row, message: err });
+                  if (Array.isArray(ctx.importLog.errors)) {
+                    ctx.importLog.errors.push({ row: row, message: err });
+                  } else {
+                    console.error('IMPORT ERROR: ', { row: row, message: err });
+                  }
                 }
                 nextSerie();
               });
