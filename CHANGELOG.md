@@ -6,6 +6,8 @@ Loopback import Mixin - CHANGELOG
 The **loopback-import-mixin** module change .
 
 
+- **Version 1.0.13**.- 
+    - Console Log Before Killing Process
 - **Version 1.0.12**.- 
     - Change throw for console.error
 - **Version 1.0.11**.- 
