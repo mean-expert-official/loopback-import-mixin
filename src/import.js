@@ -106,7 +106,7 @@ export default (Model, ctx) => {
       // Import Data
       (importLog, next) => {
         // This line opens the file as a readable stream
-        const series = [];
+        var series = [];
         fs.createReadStream(filePath)
           .pipe(csv())
           .on('data', row => {
@@ -278,11 +278,17 @@ export default (Model, ctx) => {
             });
           })
           .on('end', () => {
-            async.series(series, next);
+            async.series(series, function (err) {
+              series = null;
+              next(err);
+            });
           });
       },
       // Remove Container
-      // next => ImportContainer.destroyContainer({ container: options.container }, next),
+      next => {
+        console.log('Trying to destroy container: %s', options.container);
+        ImportContainer.destroyContainer(options.container, next)
+      },
       // Set status as finished
       next => {
         ctx.importLog.status = 'FINISHED';
