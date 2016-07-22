@@ -5,7 +5,8 @@ Loopback import Mixin - CHANGELOG
 
 The **loopback-import-mixin** module change .
 
-
+- **Version 1.0.16**.- 
+    - Removed throw error and catched error in log
 - **Version 1.0.15**.- 
     - Fixes memory leaks
 - **Version 1.0.14**.- 

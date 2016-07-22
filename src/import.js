@@ -295,7 +295,10 @@ export default (Model, ctx) => {
         ctx.importLog.save(next);
       },
     ], err => {
-      if (err) throw new Error(err);
+      if (err) {
+        ctx.importLog.status = 'DB-TIMEOUT';
+        ctx.importLog.save();
+      } else {}
       finish(err);
     });
   };
