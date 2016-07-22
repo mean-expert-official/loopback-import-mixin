@@ -92,7 +92,7 @@ export default (Model, ctx) => {
    **/
   Model.importProcessor = function ImportMethod(container, file, options, finish) {
     const filePath = __dirname + '/../../../' + options.root + '/' + options.container + '/' + options.file;
-    // const ImportContainer = Model.app.models[options.ImportContainer];
+    const ImportContainer = Model.app.models[options.ImportContainer];
     const ImportLog = Model.app.models[options.ImportLog];
     async.waterfall([
       // Get ImportLog
