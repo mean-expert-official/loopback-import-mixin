@@ -144,6 +144,15 @@ export default (Model, ctx) => {
                 (instance, nextFall) => {
                   if (instance) return nextFall(null, instance);
                   obj.importId = options.file + ':'+i;
+                  if (typeof obj.map[key] === 'object') {
+                    switch (obj.map[key].type) {
+                    case 'date':
+                      obj[key] = moment(row[obj.map[key].map], 'MM-DD-YYYY').toISOString();
+                      break;
+                    default:
+                      obj[key] = row[obj.map[key]];
+                    }
+                  }
                   Model.create(obj, nextFall);
                 },
                 // Work on relations
