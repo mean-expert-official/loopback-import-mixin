@@ -132,10 +132,6 @@ export default (Model, ctx) => {
                 (instance, nextFall) => {
                   if (instance) {
                     ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
-                    ctx.importLog.warnings.push({
-                      row: row,
-                      message: Model.definition.name + '.' + ctx.pk + ' ' + obj[ctx.pk] + ' already exists, updating fields to new values.',
-                    });
                     for (const _key in obj) {
                       if (obj.hasOwnProperty(_key)) instance[_key] = obj[_key];
                     }
@@ -207,6 +203,7 @@ export default (Model, ctx) => {
                         }
                       }
                     }
+                    createObj.importId = options.file + ':'+i;
                     instance[expectedRelation].create(createObj, nextParallel);
                   };
                   // Link Relations
@@ -229,6 +226,7 @@ export default (Model, ctx) => {
                       }
                       switch (Model.definition.settings.relations[existingRelation].type) {
                       case 'hasMany':
+                       /** Does not work, it needs to moved to other point in the flow
                         instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
                           if (exist) {
                             ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
@@ -240,6 +238,8 @@ export default (Model, ctx) => {
                           }
                           instance[expectedRelation].create(relInstance, nextParallel);
                         });
+                        **/
+                        nextParallel();
                         break;
                       case 'hasManyThrough':
                       case 'hasAndBelongsToMany':
