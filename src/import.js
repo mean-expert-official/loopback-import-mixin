@@ -106,10 +106,12 @@ export default (Model, ctx) => {
       // Import Data
       (importLog, next) => {
         // This line opens the file as a readable stream
-        var series = [];
+        let series = [];
+        let i = 0;
         fs.createReadStream(filePath)
           .pipe(csv())
           .on('data', row => {
+            i++;
             const obj = {};
             for (const key in ctx.map) {
               if (row[ctx.map[key]]) {
@@ -145,6 +147,7 @@ export default (Model, ctx) => {
                 // Otherwise we create a new instance
                 (instance, nextFall) => {
                   if (instance) return nextFall(null, instance);
+                  obj.importId = options.file + ':'+i;
                   Model.create(obj, nextFall);
                 },
                 // Work on relations
@@ -226,6 +229,18 @@ export default (Model, ctx) => {
                       }
                       switch (Model.definition.settings.relations[existingRelation].type) {
                       case 'hasMany':
+                        instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
+                          if (exist) {
+                            ctx.importLog.warnings = Array.isArray(ctx.importLog.warnings) ? ctx.importLog.warnings : [];
+                            ctx.importLog.warnings.push({
+                              row: row,
+                              message: Model.definition.name + '.' + expectedRelation + ' tried to create existing relation.',
+                            });
+                            return nextParallel();
+                          }
+                          instance[expectedRelation].create(relInstance, nextParallel);
+                        });
+                        break;
                       case 'hasManyThrough':
                       case 'hasAndBelongsToMany':
                         instance[expectedRelation].findById(relInstance.id, (relErr2, exist) => {
