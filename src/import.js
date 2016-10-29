@@ -107,7 +107,7 @@ export default (Model, ctx) => {
       (importLog, next) => {
         // This line opens the file as a readable stream
         let series = [];
-        let i = 0;
+        let i = 1; // Starts in one to discount column names
         fs.createReadStream(filePath)
           .pipe(csv())
           .on('data', row => {
