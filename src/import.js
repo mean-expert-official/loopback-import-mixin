@@ -114,10 +114,12 @@ export default (Model, ctx) => {
             i++;
             const obj = {};
             for (const key in ctx.map) {
-              if (row[ctx.map[key]]) {
-                obj[key] = row[ctx.map[key]];
-                if (typeof obj[key] === 'object') {
-                  switch (obj[key].type) {
+              let isObj = (typeof ctx.map[key] === 'object');
+              let columnKey = isObj ? ctx.map[key].map : ctx.map[key];
+              if (row[columnKey]) {
+                obj[key] = row[columnKey];
+                if (isObj) {
+                  switch (ctx.map[key].type) {
                   case 'date':
                     obj[key] = moment(obj[key], 'MM-DD-YYYY').toISOString();
                     break;
@@ -320,8 +322,10 @@ export default (Model, ctx) => {
       },
     ], err => {
       if (err) {
-        ctx.importLog.status = 'DB-TIMEOUT';
-        ctx.importLog.save();
+        console.log('Trying to destroy container: %s', options.container);
+        ImportContainer.destroyContainer(options.container, next)
+        throw new Error('DB-TIMEOUT');
+        //ctx.importLog.save();
       } else {}
       finish(err);
     });
