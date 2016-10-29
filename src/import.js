@@ -112,7 +112,7 @@ export default (Model, ctx) => {
           .pipe(csv())
           .on('data', row => {
             i++;
-            const obj = {};
+            const obj = { importId : options.file + ':'+i };
             for (const key in ctx.map) {
               let isObj = (typeof ctx.map[key] === 'object');
               let columnKey = isObj ? ctx.map[key].map : ctx.map[key];
@@ -154,7 +154,6 @@ export default (Model, ctx) => {
                 // Otherwise we create a new instance
                 (instance, nextFall) => {
                   if (instance) return nextFall(null, instance);
-                  obj.importId = options.file + ':'+i;
                   Model.create(obj, nextFall);
                 },
                 // Work on relations
