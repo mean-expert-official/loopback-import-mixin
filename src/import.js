@@ -73,6 +73,7 @@ export default (Model, ctx) => {
         // Launch a fork node process that will handle the import
         childProcess.fork(__dirname + '/processes/import-process.js', [
           JSON.stringify({
+            method: ctx.method,
             scope: Model.definition.name,
             fileUploadId: fileUpload.id,
             root: Model.app.datasources.container.settings.root,
@@ -90,7 +91,7 @@ export default (Model, ctx) => {
   /**
    * Create import method (Not Available through REST)
    **/
-  Model.importProcessor = function ImportMethod(container, file, options, finish) {
+  Model['import' + ctx.method] = function ImportMethod(container, file, options, finish) {
     const filePath = __dirname + '/../../../' + options.root + '/' + options.container + '/' + options.file;
     const ImportContainer = Model.app.models[options.ImportContainer];
     const ImportLog = Model.app.models[options.ImportLog];
