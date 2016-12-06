@@ -216,7 +216,20 @@ export default (Model, ctx) => {
                         }
                       }
                       createObj.importId = options.file + ':' + i;
-                      instance[expectedRelation].create(createObj, nextParallel);
+                      let pk = ctx.relations[expectedRelation].pk;
+                      let where = {};
+                      where[pk] = createObj[pk];
+                      instance[expectedRelation]({  where: where }, function(err, result) {
+                        if (result && Array.isArray(result) && result.length > 0) {
+                          let relatedInstance = result.pop();
+                          Object.keys(createObj).forEach(function (objKey) {
+                            relatedInstance[objKey] = createObj[objKey];
+                          });
+                          relatedInstance.save(nextParallel);
+                        } else {
+                          instance[expectedRelation].create(createObj, nextParallel);
+                        }
+                      });
                     };
                     // Link Relations
                     linkRelation = function lr(expectedRelation, existingRelation, nextParallel) {
@@ -329,6 +342,8 @@ export default (Model, ctx) => {
         throw new Error('DB-TIMEOUT');
         //ctx.importLog.save();
       } else { }
+      // TODO, Add more valuable data to pass, maybe a better way to pass errors
+      Model.app.emit(ctx.method + ':done', {});
       finish(err);
     });
   };
