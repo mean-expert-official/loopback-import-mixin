@@ -131,15 +131,25 @@ export default (Model, ctx) => {
                   }
                 }
               }
-              const query = {};
-              if (ctx.pk && obj[ctx.pk]) query[ctx.pk] = obj[ctx.pk];
+              const where = {};
+              if (ctx.pk) {
+                if (Array.isArray(ctx.pk)) {
+                  ctx.pk.forEach((pk) => {
+                    if (obj[pk]) {
+                      where[pk] = obj[pk];
+                    }
+                  });
+                } else if (obj[ctx.pk]) {
+                  where[ctx.pk] = obj[ctx.pk];
+                }
+              }
               // Lets set each row a flow
               series.push(nextSerie => {
                 async.waterfall([
                   // See in DB for existing persisted instance
                   nextFall => {
                     if (!ctx.pk) return nextFall(null, null);
-                    Model.findOne({ where: query }, nextFall);
+                    Model.findOne({ where }, nextFall);
                   },
                   // If we get an instance we just set a warning into the log
                   (instance, nextFall) => {
@@ -216,10 +226,19 @@ export default (Model, ctx) => {
                         }
                       }
                       createObj.importId = options.file + ':' + i;
-                      let pk = ctx.relations[expectedRelation].pk;
                       let where = {};
-                      where[pk] = createObj[pk];
-                      instance[expectedRelation]({  where: where }, function(err, result) {
+                      let pk = ctx.relations[expectedRelation].pk;
+                      if (pk) {
+                        if (Array.isArray(pk)) {
+                          pk.forEach((_pk) => {
+                            if (createObj[_pk])
+                              where[_pk] = createObj[_pk];
+                          });
+                        } else if (createObj[pk]) {
+                          where[pk] = createObj[pk];
+                        }
+                      }
+                      instance[expectedRelation]({ where }, function (err, result) {
                         if (result && Array.isArray(result) && result.length > 0) {
                           let relatedInstance = result.pop();
                           Object.keys(createObj).forEach(function (objKey) {
