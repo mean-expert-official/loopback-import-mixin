@@ -31,6 +31,7 @@ import fs from 'fs';
 export default (Model, ctx) => {
   ctx.Model = Model;
   ctx.method = ctx.method || 'import';
+  ctx.finisher = ctx.finisher || 'importFinisher';
   ctx.endpoint = ctx.endpoint || ['/', ctx.method].join('');
   // Create dynamic statistic method
   Model[ctx.method] = function StatMethod(req, finish) {
@@ -81,7 +82,8 @@ export default (Model, ctx) => {
             file: fileContainer.files.file[0].name,
             ImportContainer: ImportContainerName,
             ImportLog: ImportLogName,
-            relations: ctx.relations
+            relations: ctx.relations,
+            finisher: ctx.finisher
           })]);
         if (typeof finish === 'function') finish(null, fileContainer);
         resolve(fileContainer);
