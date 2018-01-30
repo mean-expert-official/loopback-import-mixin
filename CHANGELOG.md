@@ -6,6 +6,8 @@ Loopback import Mixin - CHANGELOG
 The **loopback-import-mixin** module change .
 
 
+- **Version 1.2.2**.- 
+    - Fix bug on processes import
 - **Version 1.2.1**.- 
     - Language Migration Fix
 - **Version 1.2.0**.- 

@@ -1,5 +1,5 @@
-import {deprecate} from 'util';
-import Import from './import';
+const deprecate = require('util');
+const Import = require('./import');
 
 export default deprecate(
   app => app.loopback.modelBuilder.mixins.define('Import', Import),

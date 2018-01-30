@@ -1,4 +1,4 @@
-import app from '../../../../server/server';
+const app = require('../../../../server/server');
 const options = JSON.parse(process.argv[2]);
 try {
   app.models[options.scope]['import' + options.method](options.container, options.file, options, function (err) {
