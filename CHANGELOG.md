@@ -5,6 +5,11 @@ Loopback import Mixin - CHANGELOG
 
 The **loopback-import-mixin** module change .
 
+
+- **Version 1.2.0**.- 
+    - Drop ES5 / Babel Support
+- **Version 1.1.0**.- 
+    - Updated package versions
 - **Version 1.0.29**.- 
     - Implemented ability to pass double PK fields
 - **Version ^1.0.16**.- 
