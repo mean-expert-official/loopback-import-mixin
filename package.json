@@ -1,14 +1,13 @@
 {
   "name": "loopback-import-mixin",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Jonathan Casarrubias <http://github.com/jonathan-casarrubias>",
   "description": "A mixin to provide bulk import functionallity for Loopback Models",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "preversion": "npm test",
-    "pretest": "eslint ./src/*.js && gulp",
-    "test": "_mocha --compilers js:babel-core/register",
-    "watch": "gulp",
+    "pretest": "eslint ./dist/*.js",
+    "test": "echo \"To be refactored\"",
     "outdated": "npm outdated --depth=0"
   },
   "keywords": [
@@ -19,7 +18,7 @@
     "ibm"
   ],
   "files": [
-    "src"
+    "dist"
   ],
   "repository": {
     "type": "git",

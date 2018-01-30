@@ -1,11 +1,11 @@
 /**
  * Stats Mixin Dependencies
  */
-import async from 'async';
-import moment from 'moment';
-import childProcess from 'child_process';
-import csv from 'csv-parser';
-import fs from 'fs';
+const async = require('async');
+const moment = require('moment');
+const childProcess = require('child_process');
+const csv = require('csv-parser');
+const fs = require('fs');
 // import DataSourceBuilder from './builders/datasource-builder';
 /**
   * Bulk Import Mixin
@@ -28,7 +28,7 @@ import fs from 'fs';
   * }
   **/
 
-export default (Model, ctx) => {
+module.exports = function (Model, ctx) {
   ctx.Model = Model;
   ctx.method = ctx.method || 'import';
   ctx.endpoint = ctx.endpoint || ['/', ctx.method].join('');

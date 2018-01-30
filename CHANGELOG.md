@@ -6,6 +6,8 @@ Loopback import Mixin - CHANGELOG
 The **loopback-import-mixin** module change .
 
 
+- **Version 1.2.1**.- 
+    - Language Migration Fix
 - **Version 1.2.0**.- 
     - Drop ES5 / Babel Support
 - **Version 1.1.0**.- 
